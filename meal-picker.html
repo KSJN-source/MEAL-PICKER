@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meal Picker">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="description" content="Family Meal Picker - spin the wheel to decide what to eat!">
+<title>Family Meal Picker</title>
+<!-- App Icon (SVG data URI for all platforms) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><text y='68' x='50' text-anchor='middle' font-size='60'>🎰</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a2e'/><text y='68' x='50' text-anchor='middle' font-size='60'>🎰</text></svg>">
+<!-- PWA Manifest (inline) -->
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiRmFtaWx5IE1lYWwgUGlja2VyIiwic2hvcnRfbmFtZSI6Ik1lYWwgUGlja2VyIiwiZGVzY3JpcHRpb24iOiJTcGluIHRoZSB3aGVlbCB0byBkZWNpZGUgd2hhdCB0byBlYXQhIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMxYTFhMmUiLCJ0aGVtZV9jb2xvciI6IiMxYTFhMmUiLCJvcmllbnRhdGlvbiI6InBvcnRyYWl0IiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCw8c3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgdmlld0JveD0nMCAwIDEwMCAxMDAnPjxyZWN0IHdpZHRoPScxMDAnIGhlaWdodD0nMTAwJyByeD0nMjAnIGZpbGw9JyUyMzFhMWEyZScvPjx0ZXh0IHk9JzY4JyB4PSc1MCcgdGV4dC1hbmNob3I9J21pZGRsZScgZm9udC1zaXplPSc2MCc+8J+OsDwvdGV4dD48L3N2Zz4iLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCIsInB1cnBvc2UiOiJhbnkgbWFza2FibGUifV19">
+<!-- React + Babel from CDN -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const STORAGE_KEY = "meal-picker-v4";
+const PAL = ["#FF6B6B","#4ECDC4","#FFE66D","#95E1D3","#F38181","#AA96DA","#FCBAD3","#A8D8EA","#FF9A76","#679B9B","#BEDBBB","#F6C3A1","#C4A1FF","#FFD93D","#6BCB77"];
+const MCOL = ["#FF6B6B","#4ECDC4","#FFE66D","#AA96DA","#FF9A76","#95E1D3"];
+const MAVI = ["👨","👩","👦","👧","👴","👶"];
+const XAVI = ["👨","👩","👦","👧","👴","👶","🧑","👱","🧔","👸","🤴","🧓","👵","🧒","👮","🧑‍🍳"];
+const WHEEL_COLORS = ["#D41920","#0B7A25","#E8B800","#C41018","#0A6B1F","#D4A800"];
+const MEALS = [
+  { id:"breakfast",label:"Bfast",icon:"🌅",accent:"#FFE66D",alt:"#FF9A76",line:"This morning, enjoy" },
+  { id:"lunch",label:"Lunch",icon:"☀️",accent:"#4ECDC4",alt:"#95E1D3",line:"For lunch, try" },
+  { id:"snacks",label:"Snack",icon:"🍿",accent:"#FF9A76",alt:"#FCBAD3",line:"Snack on" },
+  { id:"dinner",label:"Dinner",icon:"🌙",accent:"#FF6B6B",alt:"#F38181",line:"Tonight you're having" },
+];
+const GCOURSES = [
+  { id:"starters",label:"Starters",icon:"🥗",accent:"#4ECDC4" },
+  { id:"maincourse",label:"Main",icon:"🍖",accent:"#FF6B6B" },
+  { id:"dessert",label:"Dessert",icon:"🍰",accent:"#AA96DA" },
+];
+const DEF_MASTER = [
+  "Mutton biryani","Chicken biryani","Fried Chicken biryani","Yellow rice","Kichidi",
+  "Chicken soup and fried rice","Chicken string bean with fried rice","Palakura pappu",
+  "Chikkakura pappu","Palakura pesarapappu","Aloo tomato with rice/chapathi","Bendakai",
+  "Vankai with coconut","Vankai green curry","Tomato pachadi","Beerakai pachadi",
+  "Dosakaya pachadi","Garlic bread with omelette","Egg masala with paratha",
+  "Tacos potato egg bacon",
+];
+const DEF_MEMBERS = ["Dad","Mom","Alex","Emma","Grandpa","Baby"];
+const mkDefMD = () => { const d = {}; DEF_MEMBERS.forEach((n, i) => { d[n] = { avatar: MAVI[i], color: MCOL[i], image: "", meals: { breakfast:[], lunch:[], snacks:[], dinner:[] } }; }); return d; };
+
+const todayStr = () => new Date().toISOString().split("T")[0];
+const dayLabel = (iso) => { const d = new Date(iso+"T12:00:00"); const today = new Date(); today.setHours(12,0,0,0); const diff = Math.round((today-d)/86400000); if(diff===0)return"Today"; if(diff===1)return"Yesterday"; return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}); };
+const last7Days = () => { const days=[]; for(let i=0;i<7;i++){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split("T")[0]);} return days; };
+const shortDate = () => new Date().toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+
+async function fetchDishImage(name) {
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000,
+        tools:[{type:"web_search_20250305",name:"web_search"}],
+        messages:[{role:"user",content:'Search the web for a photo of "'+name+'" dish. Return ONLY a direct image URL ending in .jpg/.jpeg/.png/.webp. Nothing else.'}] }),
+    });
+    const d = await r.json();
+    const t = d.content.map(i=>i.type==="text"?i.text:"").filter(Boolean).join("\n");
+    const m = t.match(/https?:\/\/[^\s"<>]+\.(?:jpg|jpeg|png|webp)[^\s"<>]*/i);
+    return m?m[0]:null;
+  } catch { return null; }
+}
+
+// ═══ SOUND ENGINE ═══
+function useSounds() {
+  const ctxRef = useRef(null);
+  const g = () => { if(!ctxRef.current) ctxRef.current = new (window.AudioContext||window.webkitAudioContext)(); if(ctxRef.current.state==="suspended") ctxRef.current.resume(); return ctxRef.current; };
+  const playClick = useCallback((pitch) => { try { const c=g(),t=c.currentTime; const o=c.createOscillator(),o2=c.createOscillator(),gn=c.createGain(),f=c.createBiquadFilter(); o.connect(f);o2.connect(f);f.connect(gn);gn.connect(c.destination); f.type="bandpass";f.frequency.value=pitch||1200;f.Q.value=5; o.type="square";o.frequency.value=(pitch||1200)*0.8; o2.type="sawtooth";o2.frequency.value=(pitch||1200)*1.5; gn.gain.setValueAtTime(0.1,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.03); o.start(t);o.stop(t+0.03);o2.start(t);o2.stop(t+0.03); } catch{} }, []);
+  const playDrumRoll = useCallback(() => { try { const c=g(),t=c.currentTime; for(let i=0;i<24;i++){const st=t+i*0.025;const o=c.createOscillator(),gn=c.createGain();o.connect(gn);gn.connect(c.destination);o.type="triangle";o.frequency.value=180+i*15;gn.gain.setValueAtTime(0.03+i*0.003,st);gn.gain.exponentialRampToValueAtTime(0.001,st+0.03);o.start(st);o.stop(st+0.03);} const o=c.createOscillator(),gn=c.createGain();o.connect(gn);gn.connect(c.destination);o.type="sine";o.frequency.setValueAtTime(300,t);o.frequency.exponentialRampToValueAtTime(1200,t+0.5);gn.gain.setValueAtTime(0.06,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.6);o.start(t);o.stop(t+0.6); } catch{} }, []);
+  const playSlowdown = useCallback(() => { try { const c=g(),t=c.currentTime; for(let i=0;i<6;i++){const d=i*(0.1+i*0.04);const o=c.createOscillator(),gn=c.createGain();o.connect(gn);gn.connect(c.destination);o.type="sine";const freq=500-i*50;o.frequency.setValueAtTime(freq,t+d);o.frequency.exponentialRampToValueAtTime(freq*0.7,t+d+0.1);gn.gain.setValueAtTime(0.08,t+d);gn.gain.exponentialRampToValueAtTime(0.001,t+d+0.12);o.start(t+d);o.stop(t+d+0.12);} } catch{} }, []);
+  const playPartyHorn = useCallback(() => { try { const c=g(),t=c.currentTime; [1,1.5,2,3].forEach((mult,i)=>{const o=c.createOscillator(),gn=c.createGain(),f=c.createBiquadFilter();o.connect(f);f.connect(gn);gn.connect(c.destination);o.type="sawtooth";f.type="lowpass";o.frequency.setValueAtTime(233*mult,t);o.frequency.setValueAtTime(262*mult,t+0.1);f.frequency.setValueAtTime(800,t);f.frequency.linearRampToValueAtTime(2000,t+0.15);f.frequency.linearRampToValueAtTime(600,t+0.8);gn.gain.setValueAtTime(0,t);gn.gain.linearRampToValueAtTime(0.04/(i+1),t+0.05);gn.gain.setValueAtTime(0.04/(i+1),t+0.5);gn.gain.exponentialRampToValueAtTime(0.001,t+0.8);o.start(t);o.stop(t+0.8);}); } catch{} }, []);
+  const playJackpotBells = useCallback(() => { try { const c=g(),t=c.currentTime; [2093,2637,3136,2637,3136,3520].forEach((f,i)=>{const o=c.createOscillator(),o2=c.createOscillator(),gn=c.createGain();o.connect(gn);o2.connect(gn);gn.connect(c.destination);o.type="sine";o2.type="sine";const st=t+i*0.1;o.frequency.value=f;o2.frequency.value=f*2.4;gn.gain.setValueAtTime(0.12,st);gn.gain.exponentialRampToValueAtTime(0.01,st+0.2);o.start(st);o.stop(st+0.2);o2.start(st);o2.stop(st+0.1);}); } catch{} }, []);
+  const playCrowdCheer = useCallback(() => { try { const c=g(),t=c.currentTime; const bufSize=c.sampleRate*0.8,buf=c.createBuffer(1,bufSize,c.sampleRate); const data=buf.getChannelData(0); for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1)*0.5; const src=c.createBufferSource(),gn=c.createGain(),f=c.createBiquadFilter(); src.buffer=buf;src.connect(f);f.connect(gn);gn.connect(c.destination); f.type="bandpass";f.frequency.value=1500;f.Q.value=0.5; gn.gain.setValueAtTime(0,t+0.3);gn.gain.linearRampToValueAtTime(0.06,t+0.5);gn.gain.setValueAtTime(0.06,t+0.8);gn.gain.exponentialRampToValueAtTime(0.001,t+1.3); src.start(t+0.3);src.stop(t+1.3); const w=c.createOscillator(),wg=c.createGain();w.connect(wg);wg.connect(c.destination);w.type="sine";w.frequency.setValueAtTime(1800,t+0.5);w.frequency.linearRampToValueAtTime(2400,t+0.65);w.frequency.linearRampToValueAtTime(1800,t+0.9);wg.gain.setValueAtTime(0,t+0.5);wg.gain.linearRampToValueAtTime(0.06,t+0.55);wg.gain.exponentialRampToValueAtTime(0.001,t+1.0);w.start(t+0.5);w.stop(t+1.0); } catch{} }, []);
+  const playBoing = useCallback(() => { try { const c=g(),t=c.currentTime; const o=c.createOscillator(),gn=c.createGain();o.connect(gn);gn.connect(c.destination);o.type="sine";o.frequency.setValueAtTime(600,t);o.frequency.exponentialRampToValueAtTime(150,t+0.3);o.frequency.exponentialRampToValueAtTime(400,t+0.35);o.frequency.exponentialRampToValueAtTime(100,t+0.5);gn.gain.setValueAtTime(0.12,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.5);o.start(t);o.stop(t+0.5); } catch{} }, []);
+  const playSparkle = useCallback(() => { try { const c=g(); for(let i=0;i<14;i++){const t=c.currentTime+0.5+i*0.06;const o=c.createOscillator(),gn=c.createGain();o.connect(gn);gn.connect(c.destination);o.type="sine";o.frequency.value=2500+Math.random()*3500;gn.gain.setValueAtTime(0.05,t);gn.gain.exponentialRampToValueAtTime(0.001,t+0.08);o.start(t);o.stop(t+0.08);} } catch{} }, []);
+  return { playClick, playDrumRoll, playSlowdown, playPartyHorn, playJackpotBells, playCrowdCheer, playBoing, playSparkle };
+}
+function useSpinTicks(spinning, playClick) {
+  const ref = useRef(null);
+  useEffect(() => { if(spinning){let iv=45,c=0,pitch=1800;const tick=()=>{playClick(pitch);c++;if(c>15){iv=Math.min(iv+14,600);pitch=Math.max(pitch-40,500);}ref.current=setTimeout(tick,iv);};ref.current=setTimeout(tick,iv);} return()=>clearTimeout(ref.current); }, [spinning, playClick]);
+}
+
+// ═══ MEMBER AVATAR ═══
+function MemberAvatar({ m, size=22 }) {
+  const [err, setErr] = useState(false);
+  if(m?.image && !err) return <img src={m.image} alt="" style={{width:size,height:size,borderRadius:"50%",objectFit:"cover",border:"1.5px solid rgba(255,255,255,0.2)"}} onError={()=>setErr(true)} />;
+  return <span style={{fontSize:size*0.82,lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center",width:size,height:size}}>{m?.avatar||"👤"}</span>;
+}
+
+// ═══ IMAGE EDITOR ═══
+function ImageEditor({ currentUrl, onSave, onRemove, onAutoFind, autoFetching }) {
+  const [url, setUrl] = useState(currentUrl || "");
+  return (
+    <div style={{background:"rgba(255,255,255,0.06)",borderRadius:8,padding:8,marginTop:4,animation:"fadeIn 0.3s"}}>
+      <div style={{display:"flex",gap:5,marginBottom:6}}>
+        <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="Paste image URL…" style={{flex:1,padding:"6px 8px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:6,color:"white",fontSize:11,fontFamily:"'DM Sans',sans-serif",outline:"none"}} />
+        <button onClick={()=>{if(url.trim()){onSave(url.trim());}}} style={{padding:"6px 10px",background:"#4ECDC4",border:"none",borderRadius:6,color:"#1a1a2e",fontWeight:700,fontSize:10,cursor:"pointer"}}>Save</button>
+      </div>
+      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+        <label style={{padding:"4px 8px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:6,color:"#9fabb8",fontSize:10,cursor:"pointer"}}>
+          📁 Upload<input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{onSave(ev.target.result);};r.readAsDataURL(f);}} style={{display:"none"}} />
+        </label>
+        {onAutoFind && <button onClick={async()=>{const u=await onAutoFind();if(u){setUrl(u);onSave(u);}}} disabled={autoFetching} style={{padding:"4px 8px",background:"rgba(170,150,218,0.15)",border:"1px solid rgba(170,150,218,0.3)",borderRadius:6,color:"#AA96DA",fontSize:10,cursor:autoFetching?"wait":"pointer"}}>{autoFetching?"🔍…":"🔍 Auto"}</button>}
+        {currentUrl && <button onClick={onRemove} style={{padding:"4px 8px",background:"rgba(255,107,107,0.15)",border:"1px solid rgba(255,107,107,0.3)",borderRadius:6,color:"#FF6B6B",fontSize:10,cursor:"pointer"}}>🗑️</button>}
+      </div>
+      {url && (url.startsWith("http")||url.startsWith("data:")) && <img src={url} alt="" style={{width:60,height:40,objectFit:"cover",borderRadius:4,marginTop:6,border:"1px solid rgba(255,255,255,0.1)"}} onError={e=>{e.target.style.display="none"}} />}
+    </div>
+  );
+}
+
+// ═══ HALF-WHEEL SPINNER ═══
+function Wheel({ dishes, onPick, spinning, setSpinning }) {
+  const [rotation, setRotation] = useState(0);
+  const [coins, setCoins] = useState([]);
+  const [confetti, setConfetti] = useState([]);
+  const snd = useSounds();
+  useSpinTicks(spinning, snd.playClick);
+  const spin = useCallback(() => {
+    if(!dishes.length||spinning) return;
+    setSpinning(true); setCoins([]); setConfetti([]);
+    snd.playDrumRoll();
+    const winIdx = Math.floor(Math.random()*dishes.length);
+    const segAngle = 360/dishes.length;
+    const fullSpins = 5+Math.floor(Math.random()*3);
+    const targetRemainder = (360-(winIdx*segAngle+segAngle/2)%360+360)%360;
+    setRotation(prev => { const cur=((prev%360)+360)%360; let diff=targetRemainder-cur; if(diff<=0)diff+=360; return prev+fullSpins*360+diff; });
+    setTimeout(()=>snd.playSlowdown(),3000);
+    setTimeout(()=>snd.playBoing(),4200);
+    setTimeout(()=>{
+      setSpinning(false);
+      snd.playJackpotBells(); setTimeout(()=>snd.playPartyHorn(),300); setTimeout(()=>snd.playCrowdCheer(),200); setTimeout(()=>snd.playSparkle(),400);
+      setCoins([...Array(12)].map((_,i)=>({id:i,left:5+Math.random()*90,delay:i*0.08,dur:1+Math.random()})));
+      setConfetti([...Array(30)].map((_,i)=>({id:i,left:Math.random()*100,delay:Math.random()*0.5,dur:1.5+Math.random()*1.5,color:["#FFD700","#FF6B6B","#4ECDC4","#FF9A76","#AA96DA","#95E1D3","#fff"][i%7],size:4+Math.random()*6})));
+      onPick(dishes[winIdx]);
+    },4500);
+  }, [dishes,spinning,setSpinning,onPick,snd]);
+
+  if(!dishes.length) return <div style={{textAlign:"center",padding:"30px 20px",color:"#555"}}><div style={{fontSize:36,marginBottom:8,opacity:0.3}}>🎰</div><div style={{fontSize:12}}>No dishes! Add in Members tab.</div></div>;
+
+  const n=dishes.length, seg=360/n, R=120, cx=140, cy=140;
+  const uid = useRef("wh-"+Math.random().toString(36).slice(2,8)).current;
+  const slices = dishes.map((dish,i) => {
+    const sa=(i*seg-90)*Math.PI/180, ea=((i+1)*seg-90)*Math.PI/180;
+    const x1=cx+R*Math.cos(sa),y1=cy+R*Math.sin(sa),x2=cx+R*Math.cos(ea),y2=cy+R*Math.sin(ea);
+    const ma=((i+0.5)*seg-90)*Math.PI/180;
+    const lr=n<=6?0.62:n<=10?0.58:0.55;
+    const nx=cx+R*lr*Math.cos(ma),ny=cy+R*lr*Math.sin(ma);
+    const fs=n>14?5:n>10?5.5:n>6?6:7, ml=n>14?8:n>10?10:12;
+    return (<g key={i}><path d={`M${cx},${cy} L${x1},${y1} A${R},${R} 0 ${seg>180?1:0} 1 ${x2},${y2} Z`} fill={WHEEL_COLORS[i%6]} stroke="#FFD700" strokeWidth="1"/><path d={`M${cx},${cy} L${x1},${y1} A${R},${R} 0 ${seg>180?1:0} 1 ${x2},${y2} Z`} fill={`url(#sh-${uid})`} opacity="0.2"/><text x={nx} y={ny} fontSize={fs} fontWeight="800" fill="#fff" textAnchor="middle" dominantBaseline="middle" transform={`rotate(${(i+0.5)*seg},${nx},${ny})`} style={{fontFamily:"'DM Sans',sans-serif",textShadow:"0 1px 3px rgba(0,0,0,0.9)"}}>{dish.length>ml?dish.slice(0,ml-2)+"…":dish}</text><circle cx={cx+(R+1)*Math.cos(sa)} cy={cy+(R+1)*Math.sin(sa)} r="2" fill="#FFD700" stroke="#8B6914" strokeWidth="0.5"/></g>);
+  });
+  const WS=280, VH=WS/2+10;
+  const halfRatio = (VH/WS)*100;
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",position:"relative",width:"100%"}}>
+      <div style={{position:"relative",width:"100%",maxWidth:WS,margin:"0 auto"}}>
+        {/* Half-wheel clip container */}
+        <div style={{width:"100%",paddingBottom:`${halfRatio}%`,overflow:"hidden",position:"relative"}}>
+          {/* Full square inner to hold the wheel */}
+          <div style={{position:"absolute",top:0,left:0,width:"100%",paddingBottom:"100%"}}>
+            {/* Gold border ring */}
+            <div style={{position:"absolute",left:"-2%",top:"-2%",width:"104%",paddingBottom:"104%",borderRadius:"50%",background:"conic-gradient(from 0deg,#8B6914,#FFD700,#d4a843,#FFD700,#8B6914,#FFD700,#d4a843,#FFD700,#8B6914)",boxShadow:"0 0 30px rgba(255,215,0,0.2)"}}><div style={{position:"absolute",inset:"1%",borderRadius:"50%",background:"#1a1a2e"}}/></div>
+            {/* Bulb lights */}
+            {[...Array(24)].map((_,i)=>{const a=(i*15)*Math.PI/180;const bxP=50+52*Math.cos(a);const byP=50+52*Math.sin(a);if(byP>halfRatio/100*102+2)return null;const lit=spinning?(i%2===0):true;return(<div key={i} style={{position:"absolute",left:`${bxP}%`,top:`${byP}%`,width:"2.8%",paddingBottom:"2.8%",borderRadius:"50%",transform:"translate(-50%,-50%)",background:lit?`radial-gradient(circle at 38% 32%,#fff,${["#FFD700","#FF6B6B","#4ECDC4"][i%3]})`:"#333",boxShadow:lit?`0 0 6px ${["#FFD700","#FF6B6B","#4ECDC4"][i%3]}`:"none",border:"1px solid rgba(139,105,20,0.4)",zIndex:6,animation:spinning?`bulbChase 0.5s ${i*0.03}s infinite alternate`:"none"}}/>);})}
+            {/* SVG Wheel */}
+            <svg viewBox={`0 0 ${WS} ${WS}`} style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:3,transform:`rotate(${rotation}deg)`,transition:spinning?"transform 4.5s cubic-bezier(0.15,0.6,0.15,1)":"none",filter:"drop-shadow(0 0 6px rgba(0,0,0,0.4))"}}>
+              <defs><radialGradient id={`sh-${uid}`} cx="50%" cy="0%" r="100%"><stop offset="0%" stopColor="white" stopOpacity="0.35"/><stop offset="100%" stopColor="white" stopOpacity="0"/></radialGradient><radialGradient id={`gld-${uid}`} cx="40%" cy="35%"><stop offset="0%" stopColor="#FFD700"/><stop offset="50%" stopColor="#d4a843"/><stop offset="100%" stopColor="#8B6914"/></radialGradient></defs>
+              <circle cx={cx} cy={cy} r={R+3} fill="none" stroke={`url(#gld-${uid})`} strokeWidth="4"/>{slices}<circle cx={cx} cy={cy} r="26" fill={`url(#gld-${uid})`} stroke="#8B6914" strokeWidth="2"/><circle cx={cx} cy={cy} r="21" fill="#1a0f04" stroke="#d4a843" strokeWidth="1.5"/><circle cx={cx} cy={cy} r="16" fill={`url(#gld-${uid})`} stroke="#8B6914" strokeWidth="1"/><text x={cx} y={cy-2} fontSize="5" fontWeight="800" fill="#1a0f04" textAnchor="middle" style={{fontFamily:"'DM Sans',sans-serif",letterSpacing:"1px"}}>MEAL</text><text x={cx} y={cy+6} fontSize="7" fontWeight="900" fill="#1a0f04" textAnchor="middle" style={{fontFamily:"'Playfair Display',serif",letterSpacing:"2px"}}>PICKER</text>
+            </svg>
+            {/* Pointer */}
+            <div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",zIndex:20,filter:"drop-shadow(0 3px 6px rgba(0,0,0,0.7))",width:"8.5%"}}>
+              <svg viewBox="0 0 30 42" style={{width:"100%",height:"auto"}}><defs><linearGradient id={`pg-${uid}`} x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#FFD700"/><stop offset="50%" stopColor="#d4a843"/><stop offset="100%" stopColor="#8B6914"/></linearGradient></defs><path d="M15 42 L2 8 Q2 0 15 0 Q28 0 28 8 Z" fill={`url(#pg-${uid})`} stroke="#FFD700" strokeWidth="1.2"/><circle cx="15" cy="10" r="3" fill="#fff" opacity="0.35"/></svg>
+            </div>
+          </div>
+        </div>
+        <div style={{width:"100%",marginTop:-2,zIndex:20,height:3,background:"linear-gradient(180deg,rgba(212,168,67,0.4),transparent)",borderRadius:4}}/>
+      </div>
+      <div style={{display:"flex",justifyContent:"center",marginTop:"clamp(8px,3vw,14px)",marginBottom:2}}>
+        <button onClick={spin} disabled={spinning} style={{padding:"clamp(6px,2vw,10px) clamp(24px,8vw,40px)",fontSize:"clamp(11px,3.2vw,15px)",fontWeight:900,fontFamily:"'Playfair Display',serif",letterSpacing:"clamp(2px,1vw,5px)",textTransform:"uppercase",color:spinning?"#5a4a30":"#1a0f04",background:spinning?"linear-gradient(180deg,#3a3020,#2a2015)":"linear-gradient(180deg,#FFD700,#FFC400,#d4a843,#8B6914)",border:spinning?"2px solid #3a3020":"3px solid #FFD700",borderRadius:50,cursor:spinning?"not-allowed":"pointer",boxShadow:spinning?"none":"0 6px 24px rgba(212,168,67,0.5),inset 0 2px 0 rgba(255,255,255,0.3)",position:"relative",overflow:"hidden",transition:"all 0.3s"}}>
+          {!spinning && <div style={{position:"absolute",top:0,left:"-100%",width:"50%",height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent)",animation:"shineSweep 3s infinite"}}/>}
+          {spinning?"SPINNING...":"🎰 SPIN"}
+        </button>
+      </div>
+      {confetti.map(c=>(<div key={c.id} style={{position:"fixed",left:`${c.left}%`,top:-10,width:c.size,height:c.size*1.5,background:c.color,borderRadius:1,opacity:0,animation:`confettiDrop ${c.dur}s ${c.delay}s ease-in forwards`,zIndex:60}}/>))}
+      {coins.map(c=>(<div key={c.id} style={{position:"fixed",left:`${c.left}%`,top:-30,fontSize:20+Math.random()*10,animation:`coinDrop ${c.dur}s ${c.delay}s ease-in forwards`,zIndex:50,opacity:0}}>🪙</div>))}
+    </div>
+  );
+}
+
+function TagSelector({ allItems, selected, onToggle, accent, images }) {
+  const [f, setF] = useState("");
+  const fl = allItems.filter(d => d.toLowerCase().includes(f.toLowerCase()));
+  return (<div>
+    <input value={f} onChange={e=>setF(e.target.value)} placeholder="Search…" style={{width:"100%",boxSizing:"border-box",padding:"6px 10px",marginBottom:8,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:6,color:"white",fontSize:11,fontFamily:"'DM Sans',sans-serif",outline:"none"}} />
+    <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:200,overflowY:"auto",padding:2}}>
+      {fl.map(d=>{const on=selected.includes(d);const img=images?.[d]; return(<button key={d} onClick={()=>onToggle(d)} style={{padding:img?"2px 10px 2px 2px":"4px 10px",borderRadius:18,border:on?`2px solid ${accent}`:"2px solid rgba(255,255,255,0.1)",background:on?`${accent}22`:"rgba(255,255,255,0.03)",color:on?accent:"#7f8c9b",fontSize:10,fontWeight:on?700:400,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>{img&&<img src={img} alt="" style={{width:18,height:18,borderRadius:9,objectFit:"cover"}} onError={e=>{e.target.style.display="none"}}/>}{d}</button>);})}
+      {!fl.length && <p style={{color:"#555",fontSize:11,padding:6}}>No match.</p>}
+    </div>
+  </div>);
+}
+
+function BulkImport({ onImport, onReplace }) {
+  const [text, setText] = useState(""); const [show, setShow] = useState(false);
+  const cnt = text.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean).length;
+  return (<div style={{marginTop:6}}>
+    <button onClick={()=>setShow(!show)} style={{background:"none",border:"none",color:"#7f8c9b",fontSize:10,cursor:"pointer",textDecoration:"underline"}}>{show?"Hide":"📋 Bulk Import"}</button>
+    {show && (<div style={{marginTop:6}}>
+      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="One per line or comma-separated" rows={3} style={{width:"100%",boxSizing:"border-box",padding:"8px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:6,color:"white",fontSize:11,fontFamily:"'DM Sans',sans-serif",outline:"none",resize:"vertical"}} />
+      <div style={{display:"flex",gap:6,marginTop:4}}>
+        <button onClick={()=>{const items=text.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);if(items.length){onImport(items);setText("");setShow(false);}}} style={{padding:"6px 14px",background:"#4ECDC4",border:"none",borderRadius:6,color:"#1a1a2e",fontWeight:700,fontSize:11,cursor:"pointer"}}>+ Add {cnt}</button>
+        <button onClick={()=>{const items=text.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);if(items.length&&confirm("Replace all with "+items.length+" dishes?")){onReplace(items);setText("");setShow(false);}}} style={{padding:"6px 14px",background:"rgba(255,153,118,0.2)",border:"1px solid rgba(255,153,118,0.4)",borderRadius:6,color:"#FF9A76",fontWeight:700,fontSize:11,cursor:"pointer"}}>🔄 Replace ({cnt})</button>
+      </div>
+    </div>)}
+  </div>);
+}
+
+// ═══ MAIN APP ═══
+function App() {
+  const [masterList, setMasterList] = useState([...DEF_MASTER]);
+  const [dishImages, setDishImages] = useState({});
+  const [members, setMembers] = useState([...DEF_MEMBERS]);
+  const [memberData, setMemberData] = useState(mkDefMD);
+  const [guestDishes, setGuestDishes] = useState({starters:[],maincourse:[],dessert:[]});
+  const [pickHistory, setPickHistory] = useState({});
+  const [view, setView] = useState("home");
+  const [activeMember, setActiveMember] = useState(DEF_MEMBERS[0]);
+  const [activeMeal, setActiveMeal] = useState("breakfast");
+  const [activeGC, setActiveGC] = useState("starters");
+  const [picked, setPicked] = useState(null);
+  const [pickedMeta, setPickedMeta] = useState(null);
+  const [pickedImage, setPickedImage] = useState(null);
+  const [imgLoading, setImgLoading] = useState(false);
+  const [spinning, setSpinning] = useState(false);
+  const [familyResults, setFamilyResults] = useState(null);
+  const [guestResults, setGuestResults] = useState(null);
+  const [showEditMembers, setShowEditMembers] = useState(false);
+  const [masterFilter, setMasterFilter] = useState("");
+  const [newMasterDish, setNewMasterDish] = useState("");
+  const [saveFlash, setSaveFlash] = useState(false);
+  const [editImgDish, setEditImgDish] = useState(null);
+  const [editImgMember, setEditImgMember] = useState(null);
+  const [autoFetching, setAutoFetching] = useState(false);
+
+  const md = memberData[activeMember]||{};
+
+  // Inject viewport meta for proper mobile scaling
+  useEffect(()=>{
+    if(!document.querySelector('meta[name="viewport"]')){
+      const m=document.createElement('meta');m.name='viewport';m.content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';document.head.appendChild(m);
+    }
+  },[]);
+  const meal = MEALS.find(m=>m.id===activeMeal);
+  const currentDishes = md.meals?.[activeMeal]||[];
+  const gcourse = GCOURSES.find(c=>c.id===activeGC);
+
+  const cleanupOrphanedDishes = useCallback((ml) => {
+    const v = new Set(ml);
+    setMemberData(p=>{const c={};Object.keys(p).forEach(m=>{const pm=p[m];c[m]={...pm,meals:{breakfast:(pm.meals?.breakfast||[]).filter(d=>v.has(d)),lunch:(pm.meals?.lunch||[]).filter(d=>v.has(d)),snacks:(pm.meals?.snacks||[]).filter(d=>v.has(d)),dinner:(pm.meals?.dinner||[]).filter(d=>v.has(d))}};});return c;});
+    setPickHistory(p=>{const c={};Object.keys(p).forEach(m=>{c[m]={};Object.keys(p[m]||{}).forEach(mid=>{c[m][mid]=(p[m][mid]||[]).filter(h=>v.has(h.dish));});});return c;});
+    setGuestDishes(p=>({starters:(p.starters||[]).filter(d=>v.has(d)),maincourse:(p.maincourse||[]).filter(d=>v.has(d)),dessert:(p.dessert||[]).filter(d=>v.has(d))}));
+    setDishImages(p=>{const c={};Object.keys(p).forEach(d=>{if(v.has(d))c[d]=p[d];});return c;});
+  }, []);
+
+  useEffect(()=>{try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){const p=JSON.parse(raw);if(p.masterList)setMasterList(p.masterList);if(p.dishImages)setDishImages(p.dishImages);if(p.members){setMembers(p.members);setActiveMember(p.members[0]);}if(p.memberData)setMemberData(p.memberData);if(p.guestDishes)setGuestDishes(p.guestDishes);if(p.pickHistory)setPickHistory(p.pickHistory);}}catch(e){console.warn("Load error",e);}}, []);
+
+  const saveAll = useCallback(()=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify({masterList,dishImages,members,memberData,guestDishes,pickHistory}));}catch{}}, [masterList,dishImages,members,memberData,guestDishes,pickHistory]);
+  useEffect(()=>{saveAll();}, [saveAll]);
+
+  const addHistory = (member,mealId,dish)=>{setPickHistory(p=>{const mh={...(p[member]||{})};const arr=[...(mh[mealId]||[])];arr.unshift({dish,date:todayStr()});mh[mealId]=arr.slice(0,365);return{...p,[member]:mh};});};
+  const recentWeekDishes = (member,mealId)=>{const days=last7Days();return(pickHistory[member]?.[mealId]||[]).filter(h=>days.includes(h.date)).map(h=>h.dish);};
+  const availableDishes = (dishes,member,mealId)=>{const recent=new Set(recentWeekDishes(member,mealId));const av=dishes.filter(d=>!recent.has(d));return av.length>0?av:dishes;};
+  const saveDishImage = (dish,url)=>setDishImages(p=>{const n={...p};if(url)n[dish]=url;else delete n[dish];return n;});
+  const saveMemberImage = (name,url)=>setMemberData(p=>({...p,[name]:{...p[name],image:url||""}}));
+  const toggleMemberDish = (dish)=>{setMemberData(p=>{const pm=p[activeMember];const cur=pm.meals[activeMeal]||[];const next=cur.includes(dish)?cur.filter(d=>d!==dish):[...cur,dish];return{...p,[activeMember]:{...pm,meals:{...pm.meals,[activeMeal]:next}}};});};
+  const toggleGuestDish = (dish)=>{setGuestDishes(p=>{const cur=p[activeGC]||[];const next=cur.includes(dish)?cur.filter(d=>d!==dish):[...cur,dish];return{...p,[activeGC]:next};});};
+
+  const handlePick = async(dish,meta,member,mealId)=>{
+    setPicked(dish);setPickedMeta(meta);setFamilyResults(null);setGuestResults(null);
+    if(member&&mealId) addHistory(member,mealId,dish);
+    if(dishImages[dish]){setPickedImage(dishImages[dish]);setImgLoading(false);}
+    else{setPickedImage(null);setImgLoading(true);const url=await fetchDishImage(dish);if(url){setPickedImage(url);saveDishImage(dish,url);}setImgLoading(false);}
+  };
+
+  const spinFamily = ()=>{const res=[];members.forEach(name=>{const m=memberData[name];const d=m?.meals?.[activeMeal]||[];const avail=availableDishes(d,name,activeMeal);if(avail.length){const dish=avail[Math.floor(Math.random()*avail.length)];res.push({name,avatar:m.avatar,color:m.color,image:m.image,dish,img:dishImages[dish]});addHistory(name,activeMeal,dish);}});setFamilyResults(res);setPicked(null);setGuestResults(null);setPickedImage(null);};
+  const spinGuest = ()=>{const res={};GCOURSES.forEach(c=>{const d=guestDishes[c.id]||[];res[c.id]=d.length?d[Math.floor(Math.random()*d.length)]:"— add dishes —";});setGuestResults(res);setPicked(null);setFamilyResults(null);setPickedImage(null);};
+  const exportData = ()=>{const blob=new Blob([JSON.stringify({masterList,dishImages,members,memberData,guestDishes,pickHistory},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="meal-picker-backup.json";a.click();URL.revokeObjectURL(url);};
+  const importData = (e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=(ev)=>{try{const p=JSON.parse(ev.target.result);if(p.masterList){setMasterList(p.masterList);setTimeout(()=>cleanupOrphanedDishes(p.masterList),50);}if(p.dishImages)setDishImages(p.dishImages);if(p.members){setMembers(p.members);setActiveMember(p.members[0]);}if(p.memberData)setMemberData(p.memberData);if(p.guestDishes)setGuestDishes(p.guestDishes);if(p.pickHistory)setPickHistory(p.pickHistory);alert("✅ Imported!");}catch{alert("❌ Invalid file.");}};reader.readAsText(file);e.target.value="";};
+  const manualSave = ()=>{saveAll();setSaveFlash(true);setTimeout(()=>setSaveFlash(false),1500);};
+  const replaceMasterList = (nl)=>{const u=[...new Set(nl)];setMasterList(u);cleanupOrphanedDishes(u);};
+  const deleteMasterDish = (dish)=>{setMasterList(p=>{const next=p.filter(x=>x!==dish);cleanupOrphanedDishes(next);return next;});};
+
+  const MemberPill = ({name,compact})=>{const m=memberData[name]||{};const on=activeMember===name;const c=m.color||"#fff";const hasImg=!!m.image;const sz=compact?22:26;return(<button onClick={()=>setActiveMember(name)} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,padding:0,aspectRatio:"1",flex:"1 1 0",minWidth:0,maxWidth:"clamp(52px,15vw,76px)",borderRadius:"clamp(8px,2vw,12px)",border:on?`2.5px solid ${c}`:"2.5px solid rgba(255,255,255,0.1)",background:hasImg?"#000":"linear-gradient(145deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))",cursor:"pointer",boxShadow:on?`0 4px 16px ${c}35,inset 0 1px 0 rgba(255,255,255,0.1)`:"0 2px 8px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05)",transition:"all 0.2s",transform:on?"scale(1.05)":"scale(1)",position:"relative",overflow:"hidden"}}>
+      {on&&<div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${c},transparent)`,zIndex:5}}/>}
+      {hasImg?<>
+        <img src={m.image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:on?1:0.85}} onError={e=>{e.target.style.display="none"}}/>
+        <div style={{position:"absolute",bottom:0,left:0,right:0,height:"45%",background:"linear-gradient(180deg,transparent,rgba(0,0,0,0.75))",zIndex:2}}/>
+        <span style={{position:"absolute",bottom:3,left:0,right:0,zIndex:3,fontSize:"clamp(7px,2.2vw,10px)",fontWeight:800,color:"#fff",textShadow:`0 1px 4px rgba(0,0,0,0.9), 0 0 8px ${c}60`,textAlign:"center",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:"0 3px",lineHeight:1}}>{name}</span>
+      </>:<>
+        <span style={{fontSize:sz,lineHeight:1}}>{m.avatar||"👤"}</span>
+        <span style={{fontSize:"clamp(8px,2.4vw,12px)",fontWeight:on?800:600,color:on?c:"#99aabb",fontFamily:"'DM Sans',sans-serif",maxWidth:"90%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:1}}>{name}</span>
+      </>}
+    </button>);};
+
+  const [showManualPick, setShowManualPick] = useState(false);
+  const [manualFilter, setManualFilter] = useState("");
+
+  const renderResult = ()=>{
+    if(!picked||!pickedMeta)return null;const a=pickedMeta.accent||"#FFE66D";
+    return(<div style={{position:"relative",borderRadius:12,marginBottom:10,overflow:"hidden",animation:"fadeIn 0.5s ease",border:`1px solid ${a}44`,boxShadow:`0 4px 20px ${a}15`}}>
+      {/* Full-bleed image */}
+      <div style={{width:"100%",height:"clamp(140px,40vw,200px)",background:"rgba(0,0,0,0.4)",position:"relative",overflow:"hidden"}}>
+        {imgLoading&&<div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,zIndex:2}}><div className="img-spinner" style={{borderTopColor:a}}/><span style={{color:"#ccc",fontSize:10}}>Finding photo…</span></div>}
+        {pickedImage&&!imgLoading&&<img src={pickedImage} alt={picked} onError={()=>setPickedImage(null)} style={{width:"100%",height:"100%",objectFit:"cover",animation:"fadeIn 0.5s"}}/>}
+        {!pickedImage&&!imgLoading&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:40,opacity:0.2}}>🍽️</div>}
+        {/* Overlay text on image */}
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.55) 60%,rgba(0,0,0,0.85) 100%)",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:"10px 14px",zIndex:3}}>
+          <div style={{fontSize:"clamp(8px,2vw,9px)",color:"rgba(255,255,255,0.7)",textTransform:"uppercase",letterSpacing:2,marginBottom:2,textShadow:"0 1px 4px rgba(0,0,0,0.8)"}}>{pickedMeta.line||"You got"}</div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(16px,5vw,22px)",fontWeight:900,color:"#fff",textShadow:`0 2px 8px rgba(0,0,0,0.8), 0 0 20px ${a}50`}}>{picked}</div>
+        </div>
+        {pickedMeta.badge&&<div style={{position:"absolute",top:6,left:6,padding:"2px 7px",borderRadius:14,background:`${a}cc`,color:"#1a1a2e",fontSize:8,fontWeight:700,zIndex:4}}>{pickedMeta.badge}</div>}
+      </div>
+    </div>);
+  };
+
+  const renderHome = ()=>{
+    const avail=availableDishes(currentDishes,activeMember,activeMeal);
+    const excluded=currentDishes.length-avail.length;
+    return(<>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"clamp(3px,1.2vw,6px)",marginBottom:6,color:"#7f8c9b",fontSize:"clamp(9px,2.5vw,11px)",flexWrap:"wrap"}}>
+        <span>📅 {shortDate()}</span><span style={{opacity:0.3}}>·</span>
+        <MemberAvatar m={md} size={14}/><span style={{color:md.color,fontWeight:700}}>{activeMember}</span>
+        <span style={{opacity:0.3}}>·</span><span>{meal.icon} {meal.label}</span>
+        {excluded>0&&<><span style={{opacity:0.3}}>·</span><span style={{color:"#FF9A76"}}>{excluded} skipped</span></>}
+      </div>
+      <div style={{display:"flex",gap:"clamp(3px,1vw,6px)",justifyContent:"center",marginBottom:6}}>
+        {members.map(name=><MemberPill key={name} name={name} compact/>)}
+      </div>
+      <div style={{display:"flex",gap:"clamp(2px,1vw,5px)",justifyContent:"center",marginBottom:"clamp(4px,1.5vw,8px)"}}>
+        {MEALS.map(m=>{const on=activeMeal===m.id;return(<button key={m.id} onClick={()=>setActiveMeal(m.id)} style={{padding:"clamp(4px,1.2vw,7px) clamp(8px,2.5vw,14px)",borderRadius:9,border:on?`2px solid ${m.accent}`:"2px solid rgba(255,255,255,0.08)",background:on?`${m.accent}20`:"rgba(255,255,255,0.04)",color:on?m.accent:"#777",fontSize:"clamp(10px,2.8vw,13px)",fontWeight:on?700:500,fontFamily:"'DM Sans',sans-serif",cursor:"pointer",boxShadow:on?`0 2px 8px ${m.accent}25`:"none",transition:"all 0.2s"}}>{m.icon} {m.label}</button>);})}
+      </div>
+      <Wheel key={`${activeMember}-${activeMeal}`} dishes={avail} onPick={d=>handlePick(d,{accent:meal.accent,alt:meal.alt,line:meal.line,badge:`${activeMember} · ${meal.label}`},activeMember,activeMeal)} spinning={spinning} setSpinning={setSpinning}/>
+      {renderResult()}
+      <div style={{display:"flex",gap:"clamp(4px,1.5vw,8px)",justifyContent:"center",marginBottom:10,marginTop:4,flexWrap:"wrap"}}>
+        <button onClick={spinFamily} style={{padding:"clamp(7px,2vw,11px) clamp(12px,3.5vw,20px)",background:`${meal.accent}22`,border:`1.5px solid ${meal.accent}55`,borderRadius:12,color:meal.accent,fontSize:"clamp(11px,3vw,14px)",fontWeight:700,cursor:"pointer",boxShadow:`0 2px 10px ${meal.accent}20`}}>👨‍👩‍👧‍👦 Everyone</button>
+        <button onClick={()=>{const cats=MEALS.filter(m=>availableDishes(md.meals?.[m.id]||[],activeMember,m.id).length>0);if(!cats.length)return;const rc=cats[Math.floor(Math.random()*cats.length)];const av=availableDishes(md.meals[rc.id],activeMember,rc.id);const dish=av[Math.floor(Math.random()*av.length)];setActiveMeal(rc.id);handlePick(dish,{accent:rc.accent,alt:rc.alt,line:rc.line,badge:`${activeMember} · ${rc.label}`},activeMember,rc.id);}} style={{padding:"clamp(7px,2vw,11px) clamp(12px,3.5vw,20px)",background:"rgba(255,255,255,0.06)",border:"1.5px solid rgba(255,255,255,0.15)",borderRadius:12,color:"#aabbcc",fontSize:"clamp(11px,3vw,14px)",fontWeight:700,cursor:"pointer",boxShadow:"0 2px 10px rgba(0,0,0,0.15)"}}>🎲 Surprise</button>
+        <button onClick={()=>{setShowManualPick(!showManualPick);setManualFilter("");}} style={{padding:"clamp(7px,2vw,11px) clamp(12px,3.5vw,20px)",background:showManualPick?"rgba(78,205,196,0.2)":"rgba(255,255,255,0.06)",border:showManualPick?"1.5px solid rgba(78,205,196,0.5)":"1.5px solid rgba(255,255,255,0.15)",borderRadius:12,color:showManualPick?"#4ECDC4":"#aabbcc",fontSize:"clamp(11px,3vw,14px)",fontWeight:700,cursor:"pointer",boxShadow:"0 2px 10px rgba(0,0,0,0.15)"}}>📋 Pick</button>
+      </div>
+      {/* Manual Pick Dropdown */}
+      {showManualPick&&(<div style={{background:"rgba(255,255,255,0.06)",borderRadius:12,padding:"clamp(8px,2vw,12px)",marginBottom:12,border:"1px solid rgba(78,205,196,0.3)",animation:"fadeIn 0.3s"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+          <span style={{fontSize:"clamp(10px,2.8vw,12px)",color:"#4ECDC4",fontWeight:700}}>Choose a dish for {activeMember}</span>
+          <span style={{fontSize:"clamp(9px,2.5vw,11px)",color:"#666"}}>({avail.length})</span>
+        </div>
+        <input value={manualFilter} onChange={e=>setManualFilter(e.target.value)} placeholder="Search dishes…" style={{width:"100%",boxSizing:"border-box",padding:"clamp(6px,1.5vw,8px) clamp(8px,2vw,12px)",marginBottom:8,background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:8,color:"white",fontSize:"clamp(11px,3vw,13px)",fontFamily:"'DM Sans',sans-serif",outline:"none"}} />
+        <div style={{maxHeight:"clamp(140px,35vh,220px)",overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
+          {avail.filter(d=>d.toLowerCase().includes(manualFilter.toLowerCase())).map(d=>(<button key={d} className="manual-dish" onClick={()=>{handlePick(d,{accent:meal.accent,alt:meal.alt,line:`${activeMember} chose`,badge:`${activeMember} · ${meal.label}`},activeMember,activeMeal);setShowManualPick(false);}} style={{display:"flex",alignItems:"center",gap:"clamp(6px,2vw,10px)",padding:"clamp(6px,1.8vw,10px)",background:"rgba(255,255,255,0.04)",border:"1.5px solid rgba(255,255,255,0.08)",borderRadius:10,cursor:"pointer",transition:"all 0.15s",textAlign:"left"}}>
+            {dishImages[d]?<img src={dishImages[d]} alt="" style={{width:"clamp(28px,8vw,36px)",height:"clamp(28px,8vw,36px)",borderRadius:6,objectFit:"cover"}} onError={e=>{e.target.style.display="none"}}/>:<div style={{width:"clamp(28px,8vw,36px)",height:"clamp(28px,8vw,36px)",borderRadius:6,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"clamp(14px,4vw,18px)"}}>🍽️</div>}
+            <span style={{flex:1,fontSize:"clamp(11px,3vw,14px)",color:"#d0d7de",fontWeight:600}}>{d}</span>
+            <span style={{fontSize:"clamp(9px,2.5vw,11px)",color:meal.accent}}>Pick →</span>
+          </button>))}
+          {avail.filter(d=>d.toLowerCase().includes(manualFilter.toLowerCase())).length===0&&<div style={{textAlign:"center",padding:12,color:"#555",fontSize:"clamp(10px,2.8vw,12px)"}}>No dishes match</div>}
+        </div>
+      </div>)}
+      {familyResults&&(<div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,padding:8,marginBottom:12,border:`1px solid ${meal.accent}33`,animation:"fadeIn 0.5s"}}>
+        <div style={{textAlign:"center",fontSize:10,color:"#7f8c9b",textTransform:"uppercase",letterSpacing:2,marginBottom:6}}>{meal.icon} Family {meal.label}</div>
+        {familyResults.map((r,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:7,padding:"6px 8px",background:"rgba(255,255,255,0.04)",borderRadius:7,marginBottom:3,borderLeft:`3px solid ${r.color}`}}><MemberAvatar m={r} size={24}/><div style={{flex:1}}><div style={{fontSize:9,color:"#7f8c9b"}}>{r.name}</div><div style={{fontSize:12,fontWeight:700,color:"#e0e0e0"}}>{r.dish}</div></div>{r.img&&<img src={r.img} alt="" style={{width:24,height:24,borderRadius:5,objectFit:"cover"}} onError={e=>{e.target.style.display="none"}}/>}</div>))}
+      </div>)}
+    </>);
+  };
+
+  const renderMaster = ()=>(<>
+    <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:8}}><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:900,color:"#4ECDC4",margin:0}}>📚 Dishes</h2><span style={{color:"#555",fontSize:11}}>{masterList.length} items</span></div>
+    <div style={{display:"flex",gap:6,marginBottom:6}}>
+      <input value={newMasterDish} onChange={e=>setNewMasterDish(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const t=newMasterDish.trim();if(t&&!masterList.includes(t)){setMasterList(p=>[...p,t]);setNewMasterDish("");}}}} placeholder="Add a dish…" style={{flex:1,padding:"7px 10px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:6,color:"white",fontSize:12,outline:"none"}} />
+      <button onClick={()=>{const t=newMasterDish.trim();if(t&&!masterList.includes(t)){setMasterList(p=>[...p,t]);setNewMasterDish("");}}} style={{padding:"7px 14px",background:"#4ECDC4",border:"none",borderRadius:6,color:"#1a1a2e",fontWeight:700,fontSize:12,cursor:"pointer"}}>+</button>
+    </div>
+    <BulkImport onImport={items=>{const u=items.filter(d=>!masterList.includes(d));if(u.length)setMasterList(p=>[...p,...u]);}} onReplace={items=>replaceMasterList(items)}/>
+    <input value={masterFilter} onChange={e=>setMasterFilter(e.target.value)} placeholder="🔍 Filter…" style={{width:"100%",boxSizing:"border-box",padding:"7px 10px",marginTop:8,marginBottom:6,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"white",fontSize:11,outline:"none"}} />
+    <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:480,overflowY:"auto"}}>
+      {masterList.filter(d=>d.toLowerCase().includes(masterFilter.toLowerCase())).map((d,i)=>(<div key={d}>
+        <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 8px",background:"rgba(255,255,255,0.04)",borderRadius:8,borderLeft:`3px solid ${PAL[i%PAL.length]}`}}>
+          {dishImages[d]?<img src={dishImages[d]} alt="" style={{width:28,height:28,borderRadius:6,objectFit:"cover"}} onError={e=>{e.target.style.display="none"}}/>:<div style={{width:28,height:28,borderRadius:6,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#555"}}>📷</div>}
+          <span style={{flex:1,fontSize:12,color:"#d0d7de"}}>{d}</span>
+          <button onClick={()=>setEditImgDish(editImgDish===d?null:d)} style={{background:"none",border:"none",color:editImgDish===d?"#4ECDC4":"#7f8c9b",cursor:"pointer",fontSize:11,padding:2}}>{dishImages[d]?"🖼️":"📷"}</button>
+          <button onClick={()=>deleteMasterDish(d)} style={{background:"none",border:"none",color:"#FF6B6B",cursor:"pointer",fontSize:10,padding:2}}>✕</button>
+        </div>
+        {editImgDish===d&&<div style={{marginLeft:10}}><ImageEditor currentUrl={dishImages[d]} onSave={url=>{saveDishImage(d,url);setEditImgDish(null);}} onRemove={()=>{saveDishImage(d,"");setEditImgDish(null);}} onAutoFind={async()=>{setAutoFetching(true);const url=await fetchDishImage(d);setAutoFetching(false);return url;}} autoFetching={autoFetching}/></div>}
+      </div>))}
+    </div>
+  </>);
+
+  const renderMembers = ()=>(<>
+    <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:6}}><h2 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:900,color:"#FF6B6B",margin:0}}>👥 Members</h2><span style={{color:"#555",fontSize:11}}>{members.length} people</span></div>
+    <div style={{display:"flex",gap:"clamp(3px,1vw,6px)",justifyContent:"center",marginBottom:8}}>{members.map(name=><MemberPill key={name} name={name}/>)}</div>
+    <button onClick={()=>setShowEditMembers(!showEditMembers)} style={{background:"none",border:"none",color:"#7f8c9b",fontSize:10,cursor:"pointer",textDecoration:"underline",marginBottom:6,display:"block"}}>{showEditMembers?"Hide editing":"⚙️ Edit members & photos"}</button>
+    {showEditMembers&&(<div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:8,border:"1px solid rgba(255,255,255,0.08)",marginBottom:8}}>
+      {members.map(name=>{const m=memberData[name]||{};return(<div key={name}>
+        <div style={{display:"flex",alignItems:"center",gap:5,padding:"4px 0",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+          <MemberAvatar m={m} size={26}/>
+          <span style={{fontSize:14,cursor:"pointer",opacity:0.6}} title="Change emoji" onClick={()=>{const idx=XAVI.indexOf(m.avatar);setMemberData(p=>({...p,[name]:{...p[name],avatar:XAVI[(idx+1)%XAVI.length]}}));}}>🔄</span>
+          <input defaultValue={name} onBlur={e=>{const nn=e.target.value.trim();if(!nn||nn===name||members.includes(nn))return;setMembers(p=>p.map(x=>x===name?nn:x));setMemberData(p=>{const d={...p};d[nn]=d[name];delete d[name];return d;});if(activeMember===name)setActiveMember(nn);}} onKeyDown={e=>{if(e.key==="Enter")e.target.blur();}} style={{flex:1,padding:"3px 6px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:5,color:"white",fontSize:12,outline:"none"}} />
+          <button onClick={()=>setEditImgMember(editImgMember===name?null:name)} style={{background:"none",border:"none",color:editImgMember===name?"#4ECDC4":"#7f8c9b",cursor:"pointer",fontSize:11,padding:2}}>{m.image?"🖼️":"📷"}</button>
+          {members.length>1&&<button onClick={()=>{setMembers(p=>p.filter(x=>x!==name));setMemberData(p=>{const d={...p};delete d[name];return d;});if(activeMember===name)setActiveMember(members.find(x=>x!==name));}} style={{background:"none",border:"none",color:"#FF6B6B",cursor:"pointer",fontSize:12}}>✕</button>}
+        </div>
+        {editImgMember===name&&<div style={{marginLeft:10}}><ImageEditor currentUrl={m.image} onSave={url=>{saveMemberImage(name,url);setEditImgMember(null);}} onRemove={()=>{saveMemberImage(name,"");setEditImgMember(null);}}/></div>}
+      </div>);})}
+      {members.length<12&&<button onClick={()=>{const nn="Member "+(members.length+1);const meals={};MEALS.forEach(m=>{meals[m.id]=[];});setMembers(p=>[...p,nn]);setMemberData(p=>({...p,[nn]:{avatar:MAVI[members.length%MAVI.length],color:MCOL[members.length%MCOL.length],image:"",meals}}));}} style={{marginTop:6,width:"100%",padding:"6px",background:"rgba(255,255,255,0.06)",border:"1px dashed rgba(255,255,255,0.2)",borderRadius:6,color:"#9fabb8",fontSize:11,cursor:"pointer"}}>+ Add Member</button>}
+    </div>)}
+    <div style={{display:"flex",gap:3,justifyContent:"center",marginBottom:8,flexWrap:"wrap"}}>
+      {MEALS.map(m=>{const on=activeMeal===m.id;const cnt=(md.meals?.[m.id]||[]).length;return(<button key={m.id} onClick={()=>setActiveMeal(m.id)} style={{padding:"4px 9px",borderRadius:7,border:on?`2px solid ${m.accent}`:"2px solid rgba(255,255,255,0.06)",background:on?`${m.accent}18`:"transparent",color:on?m.accent:"#666",fontSize:10,fontWeight:on?700:500,cursor:"pointer"}}>{m.icon} {m.label} ({cnt})</button>);})}
+    </div>
+    <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:10,border:"1px solid rgba(255,255,255,0.08)"}}>
+      <div style={{fontSize:11,color:"#9fabb8",marginBottom:8}}>Toggle for <span style={{color:md.color,fontWeight:700}}>{activeMember}</span>'s <span style={{color:meal.accent,fontWeight:700}}>{meal.label}</span>:</div>
+      <TagSelector allItems={masterList} selected={currentDishes} onToggle={toggleMemberDish} accent={meal.accent} images={dishImages}/>
+    </div>
+  </>);
+
+  const renderGuest = ()=>(<>
+    <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:900,color:"#AA96DA",margin:"0 0 8px"}}>🎉 Guest Day</h2>
+    <div style={{display:"flex",gap:4,justifyContent:"center",marginBottom:8}}>
+      {GCOURSES.map(c=>{const on=activeGC===c.id;const cnt=(guestDishes[c.id]||[]).length;return(<button key={c.id} onClick={()=>setActiveGC(c.id)} style={{padding:"5px 11px",borderRadius:8,border:on?`2px solid ${c.accent}`:"2px solid rgba(255,255,255,0.08)",background:on?`${c.accent}18`:"transparent",color:on?c.accent:"#666",fontSize:10,fontWeight:on?700:500,cursor:"pointer"}}>{c.icon} {c.label} ({cnt})</button>);})}
+    </div>
+    <div style={{background:"rgba(255,255,255,0.04)",borderRadius:10,padding:10,border:"1px solid rgba(255,255,255,0.08)",marginBottom:12}}>
+      <TagSelector allItems={masterList} selected={guestDishes[activeGC]||[]} onToggle={toggleGuestDish} accent={gcourse.accent} images={dishImages}/>
+    </div>
+    {(guestDishes[activeGC]||[]).length>0&&<Wheel key={`g-${activeGC}`} dishes={guestDishes[activeGC]} onPick={d=>handlePick(d,{accent:gcourse.accent,alt:gcourse.accent,line:`Guest ${gcourse.label}`,badge:`🎉 ${gcourse.label}`})} spinning={spinning} setSpinning={setSpinning}/>}
+    {renderResult()}
+    <div style={{textAlign:"center",marginBottom:10}}><button onClick={spinGuest} style={{padding:"9px 22px",fontSize:12,fontWeight:700,color:"#1a1a2e",background:"linear-gradient(135deg,#AA96DA,#C4A1FF)",border:"none",borderRadius:50,cursor:"pointer",boxShadow:"0 4px 16px rgba(170,150,218,0.4)"}}>🎲 Full Menu</button></div>
+    {guestResults&&(<div style={{background:"rgba(255,255,255,0.06)",borderRadius:10,padding:10,border:"1px solid rgba(170,150,218,0.3)",animation:"fadeIn 0.5s"}}>
+      {GCOURSES.map(c=>(<div key={c.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 8px",background:"rgba(255,255,255,0.04)",borderRadius:7,marginBottom:4,borderLeft:`3px solid ${c.accent}`}}>
+        {dishImages[guestResults[c.id]]?<img src={dishImages[guestResults[c.id]]} alt="" style={{width:28,height:28,borderRadius:5,objectFit:"cover"}} onError={e=>{e.target.style.display="none"}}/>:<span style={{fontSize:18}}>{c.icon}</span>}
+        <div><div style={{fontSize:9,color:"#7f8c9b",textTransform:"uppercase"}}>{c.label}</div><div style={{fontSize:13,fontWeight:700,color:"#e0e0e0"}}>{guestResults[c.id]}</div></div>
+      </div>))}
+    </div>)}
+  </>);
+
+  const renderHistory = ()=>{
+    const hist=pickHistory[activeMember]?.[activeMeal]||[];
+    const byDate={};for(const h of hist){if(!byDate[h.date])byDate[h.date]=[];byDate[h.date].push(h.dish);}
+    const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a)).slice(0,10);
+    return(<>
+      <h2 style={{fontFamily:"'Playfair Display',serif",fontSize:18,fontWeight:900,color:"#FF9A76",margin:"0 0 6px"}}>📅 History</h2>
+      <div style={{display:"flex",gap:"clamp(3px,1vw,6px)",justifyContent:"center",marginBottom:6}}>{members.map(name=><MemberPill key={name} name={name} compact/>)}</div>
+      <div style={{display:"flex",gap:3,justifyContent:"center",marginBottom:8,flexWrap:"wrap"}}>
+        {MEALS.map(m=>{const on=activeMeal===m.id;return(<button key={m.id} onClick={()=>setActiveMeal(m.id)} style={{padding:"4px 9px",borderRadius:7,border:on?`2px solid ${m.accent}`:"2px solid rgba(255,255,255,0.06)",background:on?`${m.accent}18`:"transparent",color:on?m.accent:"#666",fontSize:10,fontWeight:on?700:500,cursor:"pointer"}}>{m.icon} {m.label}</button>);})}
+      </div>
+      {dates.length===0?<div style={{textAlign:"center",padding:20,color:"#555",fontSize:12}}>No picks yet. Go spin!</div>:(
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {dates.map(date=>(<div key={date} style={{background:"rgba(255,255,255,0.04)",borderRadius:8,padding:"7px 10px",border:"1px solid rgba(255,255,255,0.06)"}}>
+            <div style={{fontSize:10,color:"#7f8c9b",fontWeight:600,marginBottom:5,display:"flex",alignItems:"center",gap:5}}>
+              <span style={{color:date===todayStr()?"#FFE66D":"#7f8c9b"}}>{dayLabel(date)}</span><span style={{fontSize:9,color:"#444"}}>{date}</span>
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+              {byDate[date].map((dish,j)=>(<div key={j} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px 3px 3px",background:"rgba(255,255,255,0.05)",borderRadius:14,borderLeft:`3px solid ${meal.accent}`}}>
+                {dishImages[dish]?<img src={dishImages[dish]} alt="" style={{width:18,height:18,borderRadius:9,objectFit:"cover"}} onError={e=>{e.target.style.display="none"}}/>:<span style={{fontSize:11}}>{meal.icon}</span>}
+                <span style={{fontSize:10,color:"#d0d7de"}}>{dish}</span>
+              </div>))}
+            </div>
+          </div>))}
+        </div>
+      )}
+      {recentWeekDishes(activeMember,activeMeal).length>0&&(<div style={{marginTop:10,padding:"7px 10px",background:"rgba(255,153,118,0.1)",borderRadius:8,border:"1px solid rgba(255,153,118,0.2)"}}>
+        <div style={{fontSize:10,color:"#FF9A76",fontWeight:700,marginBottom:4}}>🚫 Excluded this week:</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+          {[...new Set(recentWeekDishes(activeMember,activeMeal))].map(d=>(<span key={d} style={{padding:"2px 8px",background:"rgba(255,107,107,0.15)",borderRadius:14,fontSize:10,color:"#FF6B6B"}}>{d}</span>))}
+        </div>
+      </div>)}
+    </>);
+  };
+
+  return (
+    <div className="mp-root" style={{minHeight:"100vh",minHeight:"100dvh",background:"linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)",fontFamily:"'DM Sans',sans-serif",color:"#e0e0e0",overflowX:"hidden"}}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet" />
+      <div style={{maxWidth:520,margin:"0 auto",padding:"env(safe-area-inset-top,8px) clamp(8px,3vw,16px) calc(env(safe-area-inset-bottom,8px) + 20px)"}}>
+        <div style={{textAlign:"center",marginBottom:"clamp(2px,1vw,6px)"}}>
+          <h1 style={{fontFamily:"'Playfair Display',serif",fontSize:"clamp(16px,5vw,22px)",fontWeight:900,background:"linear-gradient(135deg,#FFE66D,#FF6B6B,#4ECDC4,#AA96DA)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",margin:0}}>Family Meal Picker</h1>
+        </div>
+        <div style={{display:"flex",gap:"clamp(1px,0.5vw,3px)",marginBottom:"clamp(4px,1.5vw,8px)",justifyContent:"center"}}>
+          {[{id:"home",l:"Home",c:"#FFE66D"},{id:"master",l:"Dishes",c:"#4ECDC4"},{id:"member",l:"Members",c:"#FF6B6B"},{id:"guest",l:"Guests",c:"#AA96DA"},{id:"history",l:"History",c:"#FF9A76"}].map(v=>(<button key={v.id} onClick={()=>{setView(v.id);setPicked(null);setFamilyResults(null);setGuestResults(null);setPickedImage(null);}} style={{padding:"clamp(4px,1.2vw,7px) clamp(8px,2.5vw,14px)",borderRadius:8,border:view===v.id?`2px solid ${v.c}`:"2px solid transparent",background:view===v.id?`${v.c}18`:"transparent",color:view===v.id?v.c:"#666",fontSize:"clamp(10px,2.8vw,13px)",fontWeight:view===v.id?700:500,cursor:"pointer"}}>{v.l}</button>))}
+        </div>
+        {view==="home"&&renderHome()}
+        {view==="master"&&renderMaster()}
+        {view==="member"&&renderMembers()}
+        {view==="guest"&&renderGuest()}
+        {view==="history"&&renderHistory()}
+        <div style={{marginTop:16,display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap"}}>
+          <button onClick={manualSave} style={{padding:"clamp(4px,1.2vw,6px) clamp(10px,3vw,14px)",background:saveFlash?"rgba(78,205,196,0.4)":"rgba(78,205,196,0.15)",border:"1px solid rgba(78,205,196,0.3)",borderRadius:6,color:"#4ECDC4",fontSize:"clamp(9px,2.5vw,11px)",fontWeight:700,cursor:"pointer",transition:"all 0.3s"}}>{saveFlash?"✅ Saved!":"💾 Save"}</button>
+          <button onClick={exportData} style={{padding:"clamp(4px,1.2vw,6px) clamp(10px,3vw,14px)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:6,color:"#9fabb8",fontSize:"clamp(9px,2.5vw,11px)",fontWeight:600,cursor:"pointer"}}>📥 Export</button>
+          <label style={{padding:"clamp(4px,1.2vw,6px) clamp(10px,3vw,14px)",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:6,color:"#9fabb8",fontSize:"clamp(9px,2.5vw,11px)",fontWeight:600,cursor:"pointer"}}>📤 Import<input type="file" accept=".json" onChange={importData} style={{display:"none"}}/></label>
+        </div>
+        <div style={{textAlign:"center",marginTop:5,fontSize:9,color:"#333"}}>Auto-saves · Export to back up</div>
+      </div>
+      <style>{`
+        html,body{margin:0;padding:0;overflow-x:hidden;-webkit-text-size-adjust:100%}
+        .mp-root{-webkit-overflow-scrolling:touch}
+        .mp-root *{box-sizing:border-box}
+        .mp-root button{font-family:'DM Sans',sans-serif}
+        .mp-root input{font-family:'DM Sans',sans-serif}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin-loader{to{transform:rotate(360deg)}}
+        @keyframes bulbChase{0%{opacity:.3;transform:scale(.7)}100%{opacity:1;transform:scale(1.15)}}
+        @keyframes shineSweep{0%{left:-100%}30%{left:200%}100%{left:200%}}
+        @keyframes coinDrop{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(105vh) rotate(720deg)}}
+        @keyframes confettiDrop{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(105vh) rotate(720deg)}}
+        .img-spinner{width:24px;height:24px;border:3px solid rgba(255,255,255,0.1);border-top-color:#FFE66D;border-radius:50%;animation:spin-loader 0.8s linear infinite}
+        .manual-dish:hover{background:rgba(255,255,255,0.1) !important;border-color:rgba(78,205,196,0.4) !important;transform:translateX(2px)}
+        *{-webkit-tap-highlight-color:transparent}
+        ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:3px}
+        @media(max-width:360px){
+          .mp-root button{font-size:clamp(8px,2.5vw,11px)!important}
+        }
+        @media(min-width:768px){
+          .mp-root{font-size:15px}
+        }
+        @media(orientation:landscape) and (max-height:500px){
+          .mp-root{font-size:12px}
+        }
+        @media(min-width:1024px){
+          .mp-root{font-size:16px}
+        }
+        @supports(padding:max(0px)){
+          .mp-root{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+        }
+      `}</style>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+<script>
+// Register Service Worker for offline support
+if ('serviceWorker' in navigator) {
+  const SW_CODE = `
+    const CACHE = 'meal-picker-v4';
+    const URLS = ['./', 'https://unpkg.com/react@18/umd/react.production.min.js','https://unpkg.com/react-dom@18/umd/react-dom.production.min.js','https://unpkg.com/@babel/standalone/babel.min.js','https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=Playfair+Display:wght@700;900&display=swap'];
+    self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)).then(() => self.skipWaiting())));
+    self.addEventListener('activate', e => e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())));
+    self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => { if(res.ok && e.request.url.startsWith('http')){ const c=res.clone(); caches.open(CACHE).then(cache=>cache.put(e.request,c)); } return res; }).catch(() => new Response('Offline',{status:503})))));
+  `;
+  const blob = new Blob([SW_CODE], {type: 'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+</script>
+</body>
+</html>
